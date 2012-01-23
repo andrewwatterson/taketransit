@@ -1,0 +1,10 @@
+SetEnv PYTHONPATH $PYTHONPATH:/home/public/lib/python/simplejson-2.0.9-py2.5-freebsd-7.1-RELEASE-p4-i386.egg
+
+SetEnv PYTHON_EGG_CACHE /tmp
+
+AddType "text/javascript" .js
+AddType "text/css" .css
+AddType "text/javascript;charset=UTF-8" .jgz
+AddEncoding gzip .jgz
+
+AddType "text/cache-manifest" .manifest
