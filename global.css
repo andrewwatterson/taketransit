@@ -325,6 +325,28 @@ ul.list li {
 ul.list li:first-child { border-top: none; }
 ul.list li:last-child { border-bottom: none; }
 
+ul#metroList {
+	position: relative;
+	margin-bottom: 15px;
+	height: 50px;
+}
+
+ul#metroList li {
+	margin: 0;
+	padding: 0;
+	display: inline-block;
+	background-image: none;
+	width: 13.5%;
+	line-height: 50px;
+	text-align: center;
+	border: none;
+	border-left: 1px solid #CCCCCC;
+	border-right: 1px solid #666666;
+}
+
+ul#metroList li:first-child { border-left: none; }
+ul#metroList li:last-child { border-right: none; }
+
 .lookupPane {
 	padding: 15px;
 	height: 100%;

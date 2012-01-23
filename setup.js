@@ -64,7 +64,7 @@ function setupAgency(agency) {
 			$('.progBarInner').css('backgroundPositionX',Number(curPos)+1);
 		}
 	},10);
-	jQuery.getJSON('./agencies/'+agency+'.jgz',null,function(data,textStatus) { clearInterval(progressAnimate); setupAgencyHandler(agency,data,textStatus) });
+	jQuery.getJSON('./agencies/'+agency+'.js',null,function(data,textStatus) { clearInterval(progressAnimate); setupAgencyHandler(agency,data,textStatus) });
 }
 
 function setupAgencyHandler(agency,data,textStatus) {

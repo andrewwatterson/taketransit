@@ -3,7 +3,13 @@
 print "Content-type: text/json"
 print
 
-import cgi, urllib, re, simplejson as json
+import cgi, urllib, re
+
+try:
+	import simplejson as json
+	using_simplejson = True
+except ImportError:
+	using_simplejson = False
 from xml.dom import minidom
 
 urlvars = cgi.FieldStorage()

@@ -21,6 +21,9 @@ function createRoutesList(agency) {
 	return routesPane;
 }
 
+// utility function to help separate/sort numeric routes from alpha routes
+function numberPart(n) 		{ return n.match(/^[0-9]+/); }
+
 function createRoutesListHandler(transaction,results) {
 	var routeList = new Array();
 	
@@ -30,12 +33,20 @@ function createRoutesListHandler(transaction,results) {
 		
 	routeList.sort(function(a,b) {
 
-		function numberPart(n) 		{ return n.match(/^[0-9]+/); }
+		var aNum = numberPart(a.route);
+		var bNum = numberPart(b.route);
+
+		var aRank = aNum ? aNum[0] : null; 
+		var bRank = bNum ? bNum[0] : null;
+
+			if(aRank == "1") { console.log(aRank,bRank) }
+
 		
-		var aRank = numberPart(a.route); 
-		var bRank = numberPart(b.route);
-		
-		if(aRank === bRank) {
+		if(aRank === null && a.route.indexOf("OWL") !== -1) {
+			return 1;
+		} else if(bRank === null && b.route.indexOf("OWL") !== -1) {
+			return -1;
+		} else if(aRank === bRank) {
 			if(a.route < b.route) { return -1; }
 			else { return 1; }
 		} else if (aRank == 59 || aRank == 60 || aRank == 61) {
@@ -47,14 +58,25 @@ function createRoutesListHandler(transaction,results) {
 	
 	for(var i=0; i<routeList.length; i++) {	
 		var row = routeList[i];
-		var routeRow = $("<li>"+row['label']+"</li>");
+		
+		var isMetro = numberPart(row.route) === null;
+		
+		if(isMetro) {
+			var routeRow = $("<li>"+row['route']+"</li>");
+		} else {
+			var routeRow = $("<li>"+row['label']+"</li>");
+		}
 		$(routeRow).attr('agency',row['agency']);
 		$(routeRow).attr('route',row['route']);
 		$(routeRow).click(function(evt) { slider.add(createScheduleList($(evt.target).attr('agency'),
 																				$(evt.target).attr('route')
 																				));
 										});
-		$('#routesListWrapper #busList').append(routeRow);
+		if(isMetro && row.route.indexOf("OWL") === -1) {
+			$('#routesListWrapper #metroList').append(routeRow);
+		} else {
+			$('#routesListWrapper #busList').append(routeRow);
+		}
 	}
 	hideSpinner();
 	slider.slideNext();
