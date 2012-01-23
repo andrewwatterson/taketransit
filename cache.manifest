@@ -1,0 +1,45 @@
+CACHE MANIFEST
+# This is a comment.
+# Cache manifest version 0.0.1
+# If you change the version number in this comment,
+# the cache manifest is no longer byte-for-byte
+# identical.
+ 
+index.html
+
+http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js
+jquery.jswipe.js
+db.js
+setup.js
+ajax.js
+slidePane.js
+slideController.js
+listPane.js
+lookupPane.js
+ui.js
+config.js
+global.js
+global.css
+
+img/apple-touch-icon.png
+img/apple-touch-startup-image.png
+img/btnBgOn.png
+img/busarrow.png
+img/busicon.png
+img/footerBg.png
+img/headerBg.png
+img/listArrow.png
+img/lookupArrow.png
+img/plusbutton.png
+img/progressHash.png
+img/progressSolid.png
+img/reloadbutton.png
+img/spinner.gif
+img/spinnerSm.gif
+img/unavailable.png
+
+ 
+NETWORK:
+# All URLs that start with the following lines
+# are whitelisted.
+http://andrewwatterson.nfshost.com/muni/

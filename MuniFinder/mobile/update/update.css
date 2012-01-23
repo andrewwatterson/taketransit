@@ -1,0 +1,56 @@
+#installScreen {
+	padding-top: 32px;
+	padding-left: 15px;
+}
+
+#installScreen h1 {
+	padding: 0; margin: 0;
+	font-weight: bold;
+	font-size: 24px;
+}
+
+#installScreen h2 {
+	padding: 0; margin: 0;
+	font-weight: 200;
+	font-size: 18px;
+}
+
+#installScreen h2.separate {
+	margin-bottom: 14px;
+}
+
+.installBubble {
+	position: absolute;
+	bottom: 5px;
+	height: 125px;
+	width: 90%;
+	-webkit-box-sizing: border-box;
+}
+
+.installText {
+	-webkit-border-radius: 12px;
+	color: #333333;
+	background: -webkit-gradient(linear, 0% 0%, 0% 100%, from(rgb(204, 204, 204)), to(rgb(168, 168, 168)));
+	padding: 10px 15px;
+	height: 80px;
+	width: 57%;
+	-webkit-box-sizing: border-box;
+	/**/
+	font-size: 13px;
+	font-weight: 200;
+	line-height: 18px;
+}
+
+#installScreen .installText h2 {
+	padding: 0; margin: 0;
+	font-size: 16px;
+	font-weight: bold;
+	margin-bottom: 6px;
+}
+
+.installArrow {
+	margin: 0 auto;
+	height: 43px;
+	width: 44px;
+	background-image: url('./installArrow.png');
+}

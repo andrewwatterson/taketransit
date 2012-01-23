@@ -1,0 +1,19 @@
+<html>
+<head>
+
+<title>MuniFinder</title>
+<script type='text/javascript' language='JavaScript'>
+
+function browserDetect() {
+	if(navigator.userAgent.indexOf('Safari') > -1 && navigator.userAgent.indexOf('Mobile') > -1) {
+		window.location = './mobile/';
+	} else {
+		window.location = './about/';
+	}
+}
+
+</script>
+</head>
+<body onload='browserDetect();'>
+</body>
+</html>

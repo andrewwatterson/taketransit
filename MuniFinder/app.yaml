@@ -1,0 +1,23 @@
+application: munifinder
+version: 1
+runtime: python
+api_version: 1
+
+handlers:
+- url: /
+  static_files: index.html
+  upload: ./(.*)
+
+- url: /about/
+  static_files: about/index.html
+  upload: ./(.*)  
+  
+- url: /about
+  static_dir: about
+  
+- url: /mobile/
+  static_files: mobile/index.html
+  upload: ./(.*)  
+  
+- url: /mobile
+  static_dir: mobile

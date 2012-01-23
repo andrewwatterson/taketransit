@@ -1,0 +1,988 @@
+bplist00Ò_WebMainResource_WebSubresourcesÔ	
+^WebResourceURL_WebResourceFrameName_WebResourceMIMEType_WebResourceData_http://sf.munitime.com/PYtext/htmlO,ş<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<title>MuniTime</title>
+	<meta http-equiv="content-type" content="text/html;charset=UTF-8" />
+	<meta name="viewport" content="width=320, user-scalable=no" />
+	<link rel="stylesheet" href="/css/viewer.css" type="text/css" media="screen" charset="utf-8" />
+	<link rel="apple-touch-icon" href="/img/touchicon.png" />
+	<script src="/js/ajax.js" type="text/javascript" charset="utf-8"></script>
+	<script src="/js/cookies.js" type="text/javascript" charset="utf-8"></script>
+	<script type="text/javascript">
+		
+		var selectedCity = "sf";
+		var selectedRoute = "J";
+		var selectedDirection = "J__IB2";
+		var selectedStop = "5448";
+		var reloadTimer = null;
+		var chooserShown = false;
+		
+		function setRoute(routeTag, routeName)
+		{
+			// Update selection.
+			selectedRoute = routeTag;
+			selectedDirection = null;
+			selectedStop = null;
+			
+			// Update cookies.
+			setCookie("sr_sf-muni_sf", routeTag, 1000);
+			deleteCookie("sd_sf-muni_sf");
+			deleteCookie("ss_sf-muni_sf");
+			
+			// Trash displayed times.
+			deleteTimes();
+			
+			// Display new route info.
+			displayRoute(routeTag, routeName);
+			
+			// Show progress.
+			showProgress("Changing Route");
+			
+			// Load default direction and stop for this route.
+			var ajax = new Ajax(function(a, response, defaults)
+			{
+				// Set default direction.
+				selectedDirection = defaults.direction.tag;
+				setCookie("sd_sf-muni_sf", defaults.direction.tag, 1000);
+				displayDirection(defaults.direction.tag, defaults.direction.name);
+				
+				// Set default stop.
+				selectedStop = defaults.stop.tag;
+				setCookie("ss_sf-muni_sf", defaults.stop.tag, 1000);
+				displayStop(defaults.stop.tag, defaults.stop.name);
+				setMapLink(defaults.stop.name, defaults.stop.lat, defaults.stop.lon);
+				
+				// Set default times.
+				displayTimes(defaults.times);
+				
+				hideProgress();
+			});
+			ajax.get("lookup.php", {kind: "defaults", city: selectedCity, route: selectedRoute});
+		}
+		
+		function setDirection(directionTag, directionName)
+		{
+			// Update selection.
+			selectedDirection = directionTag;
+			selectedStop = null;
+			
+			// Update cookies.
+			setCookie("sd_sf-muni_sf", directionTag, 1000);
+			deleteCookie("ss_sf-muni_sf");
+			
+			// Trash displayed times.
+			deleteTimes();
+			
+			// Display new direction info.
+			displayDirection(directionTag, directionName);
+			
+			// Show progress.
+			showProgress("Changing Direction");
+			
+			// Load default stop for this direction.
+			var ajax = new Ajax(function(a, response, defaults)
+			{
+				// Set default stop.
+				selectedStop = defaults.stop.tag;
+				setCookie("ss_sf-muni_sf", defaults.stop.tag, 1000);
+				displayStop(defaults.stop.tag, defaults.stop.name);
+				setMapLink(defaults.stop.name, defaults.stop.lat, defaults.stop.lon);
+				
+				// Set default times.
+				displayTimes(defaults.times);
+				
+				hideProgress();
+			});
+			ajax.get("lookup.php", {kind: "defaults", city: selectedCity, route: selectedRoute, direction: selectedDirection});
+		}
+		
+		function setStop(stopTag, stopName)
+		{
+			// Update selection.
+			selectedStop = stopTag;
+			
+			// Update cookies.
+			setCookie("ss_sf-muni_sf", stopTag, 1000);
+			
+			// Trash displayed times.
+			deleteTimes();
+			
+			// Display new stop info.
+			displayStop(stopTag, stopName);
+			
+			// Show progress.
+			showProgress("Changing Stop");
+			
+			// Load times for this stop.
+			var ajax = new Ajax(function(a, response, defaults)
+			{
+				displayTimes(defaults.times);
+				hideProgress();
+				setMapLink(defaults.stop.name, defaults.stop.lat, defaults.stop.lon);
+			});
+			ajax.get("lookup.php", {kind: "times", city: selectedCity, route: selectedRoute, direction: selectedDirection, stop: selectedStop});
+		}
+		
+		function setMapLink(stopName, stopLatitude, stopLongitude)
+		{
+			var name = stopName;
+			name = name.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+			document.getElementById("maplink").href = "http://maps.google.com/maps?q=("+encodeURIComponent(name)+")@"+stopLatitude+","+stopLongitude;
+		}
+		
+		function displayRoute(routeTag, routeName)
+		{
+			var routePanel = document.getElementById("route");
+			routePanel.innerHTML = routeName;
+		}
+		
+		function displayDirection(directionTag, directionName)
+		{
+			var directionPanel = document.getElementById("direction");
+			directionPanel.innerHTML = "Direction <small>"+directionName+"</small>";
+		}
+		
+		function displayStop(stopTag, stopName)
+		{
+			var stopPanel = document.getElementById("stop");
+			stopPanel.innerHTML = "Stop <small>"+stopName+"</small>";
+		}
+		
+		function displayTimes(times)
+		{
+			var nextTimeContent = "";
+			var laterTimesContent = "";
+			var timeCount = Math.min(4,times.length);
+			
+			if( timeCount == 0 )
+			{
+				nextTimeContent = "<span><i>Not Scheduled</i></span>";
+				laterTimesContent = "";
+			}
+			else
+			{
+				for(var i = 0; i < timeCount; i++)
+				{
+					var time = times[i];
+					
+					if( i == 0 )
+					{
+						if( time == 0 )
+							nextTimeContent = "<span><em>Arriving Now!</em></span>";
+						else
+							nextTimeContent = "<span><small>Arriving in</small><strong>"+time+"</strong><b>minute"+(time == 1 ? "" : "s")+"</b></span>";
+					}
+					else
+					{
+						if( laterTimesContent.length == 0 )
+							laterTimesContent = "Also arriving in ";
+						
+						laterTimesContent += time;
+						
+						if( i != timeCount-1 )
+						{
+							if( i == timeCount-2 )
+								laterTimesContent += " and ";
+							else
+								laterTimesContent += ", ";
+						}
+						
+						if( i == timeCount-1 )
+							laterTimesContent += " minute"+(time == 1 ? "" : "s");
+					}
+				}
+			}
+			
+			document.getElementById("nexttime").innerHTML = nextTimeContent;
+			document.getElementById("latertimes").innerHTML = laterTimesContent;
+		}
+		
+		function deleteTimes()
+		{
+			document.getElementById("nexttime").innerText = "";
+			document.getElementById("latertimes").innerText = "";
+		}
+		
+		function showChooser(kind)
+		{
+			var chooserTitle = "";
+			var loadingTitle = "Loading";
+			var kindOptions = null;
+			var elementClass = "";
+			
+			if( chooserShown )
+				return;
+			
+			chooserShown = true;
+			
+			if( kind == "routes" )
+			{
+				kindOptions = {kind: "routes", city: selectedCity};
+				chooserTitle = "Choose a Route";
+				loadingTitle = "Loading Routes";
+				elementClass = "routes";
+			}
+			else
+			if( kind == "directions" )
+			{
+				kindOptions = {kind: "directions", city: selectedCity, route: selectedRoute};
+				chooserTitle = "Choose a Direction";
+				loadingTitle = "Finding Available Directions";
+				elementClass = "directions";
+			}
+			else
+			if( kind == "stops" )
+			{
+				kindOptions = {kind: "stops", city: selectedCity, route: selectedRoute, direction: selectedDirection};
+				chooserTitle = "Choose a Stop";
+				loadingTitle = "Finding Available Stops";
+				elementClass = "stops";
+			}
+			
+			scrollTo(0, 1);
+			showProgress(loadingTitle);
+			
+			var ajax = new Ajax(function(a, response, results)
+			{
+				var chooserList = document.createElement("ul");
+				var chooserContainer = document.getElementById("chooserList");
+				
+				for(var i = 0; i < results.length; i++)
+				{
+					var result = results[i];
+					var chooserItem = document.createElement("li");
+					
+					chooserItem.onclick = chooserTrampoline(kind, result.tag, result.name);
+					chooserItem.innerHTML = result.name;
+					
+					chooserList.appendChild(chooserItem);
+				}
+				
+				hideProgress();
+				setTitle(chooserTitle);
+				
+				if( chooserContainer.lastChild != null )
+					chooserContainer.removeChild(chooserContainer.lastChild);
+				
+				chooserContainer.appendChild(chooserList);
+				
+				document.getElementById("content").style.display = "none";
+				document.getElementById("chooser").style.display = "block";
+			});
+			
+			ajax.get("lookup.php", kindOptions);
+		}
+		
+		function chooserTrampoline(kind, tag, name)
+		{
+			return function() { closeChooser(kind, tag, name); };
+		}
+		
+		function closeChooser(kind, value, title)
+		{
+			document.getElementById("chooser").style.display = "none";
+			document.getElementById("content").style.display = "block";
+			
+			setTitle();
+			
+			chooserShown = false;
+			
+			switch( kind )
+			{
+				case "routes":
+					setRoute(value, title);
+					break;
+				
+				case "directions":
+					setDirection(value, title);
+					break;
+				
+				case "stops":
+					setStop(value, title);
+					break;
+			}
+		}
+		
+		function showProgress(title)
+		{
+			document.getElementById("progress").innerHTML = "<span>"+title+"</span>";
+			document.getElementById("progressBack").style.display = "block";
+			document.getElementById("progress").style.display = "block";
+		}
+		
+		function hideProgress()
+		{
+			document.getElementById("progress").style.display = "none";
+			document.getElementById("progressBack").style.display = "none";
+			
+			// Attempt to start updating times 
+			// when an operation has finished.
+			startTimesUpdater();
+		}
+		
+		function setTitle(title)
+		{
+			if( title == null )
+				title = "San Francisco Muni";
+		
+			document.getElementById("header").innerHTML = "<span>"+title+"</span>";
+		}
+		
+		function updateTimes()
+		{
+			if( chooserShown )
+			{
+				startTimesUpdater();
+				return;
+			}
+			
+			stopTimesUpdater();
+			
+			if( selectedStop != null )
+			{
+				// Trash displayed times.
+				deleteTimes();
+				
+				// Show progress.
+				showProgress("Updating Times");
+				
+				// Load times for this stop.
+				var ajax = new Ajax(function(a, response, results)
+				{
+					displayTimes(results.times);
+					hideProgress();
+					startTimesUpdater();
+				});
+				ajax.get("lookup.php", {kind: "times", city: selectedCity, route: selectedRoute, direction: selectedDirection, stop: selectedStop});
+			}
+		}
+		
+		function stopTimesUpdater()
+		{
+			if( reloadTimer == null )
+				return;
+			
+			clearTimeout(reloadTimer);
+			reloadTimer = null;
+		}
+		
+		function startTimesUpdater()
+		{
+			stopTimesUpdater();
+			reloadTimer = setTimeout(updateTimes, 1000 * 60);
+		}
+		
+		window.onload = function()
+		{
+			// Preload some images.
+			var img = new Image();
+			img.src = "/img/prog.gif";
+			
+			// Hide chrome.
+			setTimeout(scrollTo, 0, 0, 1);
+			
+			// Start time refresh.
+			startTimesUpdater();
+		}
+	
+	</script>
+</head>
+<body>
+
+<div id="progress" style="display:none;"><span>Loading Directions</span></div>
+<div id="progressBack" style="display:none;"></div>
+
+<div id="page">
+	
+	<div id="header" style="background-image: url(/cities/sf/img/bar.png);"><span>San Francisco Muni</span></div>
+
+	<div id="chooser" style="display:none;">
+		<div id="chooserList"></div>
+	</div>
+	
+	<div id="content">
+		<div id="optionsContainer">
+			<ul id="options">
+								<li onclick="showChooser('routes')" id="route">J-Church</li>
+								<li onclick="showChooser('directions')" id="direction">Direction <small>Inbound to Embarcadero Station</small></li>
+				<li onclick="showChooser('stops')" id="stop">Stop <small>Green Division Yard</small></li>
+			</ul>
+			<div id="maplinkContainer"><a id="maplink" href="http://maps.google.com/maps?q=(Green+Division+Yard)@37.7209,-122.44666">View Map</a></div>
+		</div>
+		<div id="times">
+			<div id="nexttime"><span><small>Arriving in</small><strong>6</strong><b>minutes</b></span></div>
+			<div id="latertimes">Also arriving in 17, 21 and 43 minutes</div>
+		</div>
+<!-- 		<div id="ad">Want to put a text ad here? <a href="mailto:ads@munitime.com">Contact me!</a></div> -->
+	</div>
+	
+</div>
+	
+</body>
+</html>
+
+¤
+Ô_WebResourceResponse_#http://sf.munitime.com/img/prog.gifOcbplist00Ô	
+X$versionT$topY$archiverX$objects † Ñ_WebResourceResponse€_NSKeyedArchiver¯&,-345MNOPQRSTUVWXYZ[\M]^bcU$nullİ
+ !"#$%V$classR$3R$8S$10S$11R$5R$6R$4R$7R$2R$9R$0R$1€€€ €€€€€ Ó
+'()$+WNS.base[NS.relative€€ €_#http://sf.munitime.com/img/prog.gifÒ./01X$classesZ$classname¢12UNSURLXNSObject#A¯¡\ªÈÓ
+6789CWNS.keysZNS.objects€©:;<=>?@AB€	€
+€€€
+€€€€©DEFGHIJKL€€€€€€€€€ZKeep-Alive]Accept-RangesVServer\Content-TypeTDate^Content-LengthTEtagZConnection]Last-Modified_timeout=2, max=95Ubytes_vApache/2.2.11 (Unix) PHP/4.4.9 mod_ssl/2.2.11 OpenSSL/0.9.8c mod_fastcgi/2.4.6 Phusion_Passenger/2.1.2 DAV/2 SVN/1.4.2Yimage/gif_Sun, 05 Apr 2009 20:49:11 GMTT3236_"c195099-ca4-434805c4f4600"_Thu, 05 Jul 2007 08:56:56 GMTÒ./_`£`a2_NSMutableDictionary\NSDictionary¤Ò./de£ef2_NSHTTPURLResponse]NSURLResponse     ) 2 7 : P R d … ‹ ¦ ­ ° ³ · » ¾ Á Ä Ç Ê Í Ğ Ó Õ × Ù Û İ ß á ã å ç é ë ò ú
+27@KNT]fhow‚„’”–˜šœ ª¬®°²´¶¸º¼ÇÕÜéîı
+/5®¸Øİû $:GJOSg             g              uYimage/gifO¤GIF89a    ó     ÿÿÿ888zzzHHHdddÈÈÈ¨¨¨&&&BBBàààúúú         !ÿNETSCAPE2.0   !şBuilt with GIF Movie Gear 4.0 !şMade by AjaxLoad.info !ù	
+   ,         çÈIia¥êÍçbK…$F£RA”T²,¥2Sâ*05//Ém¢p!z“ÁÌ0;$Å0Cœ.I*!üHC(A@oƒ!39T5º\Ñ8)¨
+‡ `Áî´²dwxG=Y
+gƒwHb†vA=’0	V\œ\ˆ;	¤¥œŸ;¥ª›H¨Š¢«¬³˜0¶µt%‘Hs‰‹rY<H.Å‰·–	¾’b¿ZbÇOEg:˜GY].À=ÚAßOQœs†æ ê\bÃh.9ì=sgõcŒóeâØ*Ö†f 7D  !ù	
+   ,         êÈIiY¤êÍ§YF5FÔ¢RÃ”TbGºJ…»Àì¬Lªdáğ&…Ymxè”Ã \@˜€êÁš °1ü&Rƒ±’H
+41Q´Û|V%zv#j0‡
+lŒGg{0~‰<<	„[¢[‡h‘x¥¡G©
+y©¢©§¯‡£¶–[0—º¼G´‘¨¦P†zœÇhÉ¾¡Ä˜kzÂi—Éy ÑÊh|zÕh’Gİ„âVÅ¢¯é í¹ë\hç[¯ï Ç¤ˆŠõ&•+‘ W7·8àÈ! !ù	
+   ,         îÈI)1¤êÍç1G5d]…(•¡RÇ²”T2Œ”jL„{ÃÓ< [Ğ5àM¾à
+0Ğ)…
+ L¸¤I†ğm…ÍE¨Ç`´p¥U
+^f%‚^±Èäu;zz}0„X	
+‰S0ewyk<œ%	ŸO££‰“	‘¦z¤ª{’­¬ª|©ª¤¶£¢%¹š»½F¯iŒ1Â”0ˆ‰€‡¦Ë¼Y´›šÃ8ÄxŠ¿’Œ	zŸÉ@‰‰×<İ« â šÇÁŞãè ¯¾ì8ñçY<¯ŒêÉ¥8ó‡§\‡P$µ»¥!’Á
+  !ù	
+   ,         çÈI©¢êÍgEU– Õ R‡a”TBÙ¤á¾p>'¶•¤eõ$ˆ™"ˆ\‡#E1Cn€ÄƒÉ~×Õ J,Ü,Aa•ªUw^4I%PİŞuQ33{0i1T…Ggwy}%ˆ%'Rœ ¡	…Œ=¡ª¦§«£¥§3¶G–%¹”pº½0¦
+™³JRo…5È†0IÄ¦mykˆÃxÍTˆ_}È( …×^ââyKsµìœé>i_¨%Õînú=ÙâÚÊqØ4eÍ-MÂ¤D  !ù	
+   ,         îÈI)*¨êÍ')E¥d]•¦ÃPR	A”:!­ûzr’‚“œbw“
+%6€"G¤(d$["‡’øJ±ÀFh­aQP`p%Â†/BFP\cU
+â
+?TĞtW/pG&OtDa_sylD'M˜™œq	Štc˜¥¡¢™¦b ¢2š±D“M:‘µ¹¹d¡ˆ%À¢4%s)À»‘uƒƒE3¸£ YU€‹ tÚ–ææ‘ÆDŠ$æJiMí<àYà;ŠØ°€˜d<“ O‚tXò<q'+B  !ù	
+   ,         óÈIiR©êÍ§"J% –¡¦EQZª®ÒïLd’Š÷-Y®¦
+õh‚–kèQ¡|€„5áu¾4YøIƒ« N
+bW‡€u‘‡5›
+îÁr‚ö	¬%yb>^%o/rvl9'L’“–—;†‡9—Ÿ›œ“ ™…£”ª9€%‹i9³³¨ C¹"†BB¹µDsÎ^Xf}$P	×{LŞ?P Ê”›O4 ×ĞÀEÓóå’›Vë$¸æÊd JĞ#)…pVÂÀ$ !ù	
+   ,         ëÈIiR©êÍ§"J…d]• ¡RÂZN‰*P*«á;Õ$P{*”N‚Àí\EĞò!1UO2İD	™_r6Iöb
+¡¤åÔÄH—š8	B—;	²¬"'ªœZÛÚt½’b€K#C'Kˆ‰Œw}?ˆ”‘’K•iz6Š :x‚KAC¨¨Ÿ&}9®tz\\¶¨ªD5;x¹¨±Qd(Ö 	Ë±KWÖÊŠMBàËˆI´éÚˆM=ñË¤søâ¸½8Daƒ¡J`@LG !ù	
+   ,         ïÈIiR©êÍ§"J…d]• ¡RÂZN‰*P*«á;Õ$P{*”N‚Àí\EĞò!1UO2İD	™_r6Iöb
+¡¤åÔÄH—š8	B—;	²¬"'ªœZÛÚt½’b€K#C'Kˆ‰Gziz6ˆ8}z‰’”~Š›%X„K9ƒ:¢¨0}¤%	¨tz\B±¤lcL¢bQÇÑ 	ÅˆÎÑÅÇ‰ÎÂ İÅ³KÎŞè¸ÅˆäìçÒéÅxÎ(È›PàšX,ÈéÖ‚|/"  !ù	
+   ,         ğÈIiR©êÍ§"J…d]• ¡RÂZN‰*P*«á;Õ$P{*”N‚Àí\EĞò!1UO2İD	™_r6Iöb
+¡¤åÔÄH—š8	B—;	²¬"'ªœZÛÚt½’b€K#C'Kˆ‰Gziz6ˆ8}z‰’”~Š›%…:„A/C}¦¦†u\¯³h}b¥¦DÂÃ]=¦¨¨Ö 	ÈV)ÓÖ
+ÚŠÓĞâÈ9CÓãëDæKè õí¼K¦…¢u	·Ç*00SÊtD  !ù	
+   ,         ëÈIiR©êÍ§"J…d]• ¡RÂZN‰*P*«á;Õ$P{*”N‚Àí\EĞò!1UO2İD	™_r6Iöb
+¡¤åÔÄH—š8	B—;	²¬"'ªœZÛÚt½’b€K#C'Kˆ‰Gz‘‰z5
+‘—“”˜ŠŸC…:	„A/C}ªª†u\³·Eh}b©ª6 Å[=ª¥¸¥× Wx&)Ô×ÒI9ˆÔ¬ á@oCÔêT?KŞÆéØdÛïò]øÁB7¡À ‚ 6Ğ«D !ù	
+   ,         èÈIiR©êÍ§"J…d]• ¡RÂZN‰*P*«á;Õ$P{*”N‚Àí\EĞò!1UO2İD	™_r6IöÆ€ÔÄH—š03ª³”hÕ¸ƒ›aÀ—j U{CIkmbK#‡cK‘’€8	„{a’•8™n›•˜™“¥‡‚V:ˆ/q:M
+¯¯Cu€~ ·¸‰Eh³k®¯6 	½ [_¯±ƒ6P</UÙYHF’á9?MÂ%
+áGËÌéCákó v¨Ùñ>.]ú6©ğ!‡)Vˆ  !ù	
+   ,         ğÈIiR©êÍ§"J…d]U¡RÂZN	Ã”JÀjøN2sK6
+±›d‹I€È)
+LØH°W¡G6	ÊKX¦ƒì ±’.6¢d°¨~z“hÙÂuur/6 X5ƒI;_†tO#E	{O››ˆ9V¢£œ9£¨4¡©œ±›—;V–C/
+€¹6»Ã˜~*½'ÃŠMo¸º»€nÎÇbXÂ:~]+V*ÍmåK_àOÑrK ñ³N@. ê›Ñdù ~ÎqĞ¦äD¢BÖ‹5D  ;         Ô_!http://sf.munitime.com/js/ajax.jsOpbplist00Ô	
+X$versionT$topY$archiverX$objects † Ñ_WebResourceResponse€_NSKeyedArchiver¯&,-345MNOPQRSTUVWXYZ[\M]^bcU$nullİ
+ !"#$%V$classR$3R$8S$10S$11R$5R$6R$4R$7R$2R$9R$0R$1€€€ €€€€€ Ó
+'()$+WNS.base[NS.relative€€ €_!http://sf.munitime.com/js/ajax.jsÒ./01X$classesZ$classname¢12UNSURLXNSObject#A¯¡­s¨ÈÓ
+6789CWNS.keysZNS.objects€©:;<=>?@AB€	€
+€€€
+€€€€©DEFGHIJKL€€€€€€€€€ZKeep-Alive]Accept-RangesVServer\Content-TypeTDate^Content-LengthTEtagZConnection]Last-Modified_timeout=2, max=99Ubytes_vApache/2.2.11 (Unix) PHP/4.4.9 mod_ssl/2.2.11 OpenSSL/0.9.8c mod_fastcgi/2.4.6 Phusion_Passenger/2.1.2 DAV/2 SVN/1.4.2_application/javascript_Sun, 05 Apr 2009 20:49:10 GMTT3210_"c1950bb-c8a-434805c5e8840"_Thu, 05 Jul 2007 08:56:57 GMTÒ./_`£`a2_NSMutableDictionary\NSDictionaryŠÒ./de£ef2_NSHTTPURLResponse]NSURLResponse     ) 2 7 : P R d … ‹ ¦ ­ ° ³ · » ¾ Á Ä Ç Ê Í Ğ Ó Õ × Ù Û İ ß á ã å ç é ë ò ú
+05>ILR[dfmu€‚Œ’”–˜šœ¨ª¬®°²´¶¸ºÅÓÚçìû -3¬Ååê(-1GTW\`t             g              ‚_application/javascriptOŠ
+var AjaxDefaultFailHandler = null;
+var AjaxDefaultExceptionHandler = null;
+
+function Ajax( completeHandler, failHandler, exceptionHandler )
+{
+	this.onComplete = completeHandler;
+	this.onException = exceptionHandler;
+	this.onFail = failHandler;
+	this.transport = this.getTransport();
+	this.transport.onreadystatechange = ajaxTrampoline(this);
+}
+
+Ajax.prototype.setDefaultFailHandler = function( handler )
+{
+	AjaxDefaultFailHandler = handler;
+}
+
+Ajax.prototype.setDefaultExceptionHandler = function( handler )
+{
+	AjaxDefaultExceptionHandler = handler;
+}
+
+Ajax.prototype.get = function( uri, query )
+{
+	if( query != null )
+	{
+		var queryString = [];
+		for(var property in query) queryString.push(encodeURIComponent(property) + "=" + encodeURIComponent(query[property]));
+		uri += "?" + queryString.join('&');
+	}
+
+	this.transport.open("GET", uri, true);
+	this.transport.send("");
+}
+
+Ajax.prototype.post = function( uri, data )
+{
+	this.transport.open("POST", uri, true);
+	this.transport.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+	this.transport.send(data);
+}
+
+Ajax.prototype.stateDispatch = function()
+{
+  if( this.transport.readyState == 4 )
+	{
+		if( this.transport.status >= 200 && this.transport.status < 300 && this.transport.responseText.length > 0 )
+		{
+			var responseText = this.transport.responseText;
+			
+			if( this.getHeader("Content-Type") == "application/json" )
+			{
+				var responseObject = eval("("+responseText+")");
+				if( responseObject != null && typeof(responseObject.isexception) != 'undefined' && responseObject.isexception == true )
+					this.handleFailure(this,responseObject);
+				else
+					this.handleComplete(this, responseText, responseObject);
+			}
+			else
+				this.handleComplete(this, responseText);
+		}
+		else
+		{
+			this.handleFailure(this);
+		}
+	}
+}
+
+Ajax.prototype.handleComplete = function(ajaxObject, responseText, responseObject)
+{
+	if( typeof( responseObject ) != 'undefined' )
+	{
+		if( this.onComplete )
+			this.onComplete(this, responseText, responseObject);
+	}
+	else
+	{
+		if( this.onComplete )
+			this.onComplete(this, responseText);
+	}
+}
+
+Ajax.prototype.handleFailure = function(ajaxObject, exception)
+{
+	if( typeof( exception ) != 'undefined' )
+	{
+		if( this.onException )
+			this.onException(this, exception);
+		else
+		if( AjaxDefaultExceptionHandler != null )
+			AjaxDefaultExceptionHandler(this, exception);
+		else
+		if( this.onFail )
+			this.onFail(this, exception);
+		else
+		if( AjaxDefaultFailHandler != null )
+			AjaxDefaultFailHandler(this, exception);
+	}
+	else
+	{
+		if( this.onFail )
+			this.onFail(this);
+		else
+		if( AjaxDefaultFailHandler != null )
+			AjaxDefaultFailHandler(this);
+	}
+}
+
+Ajax.prototype.getHeader = function(name)
+{
+	try { return this.transport.getResponseHeader(name); }
+	catch(e) {}
+}
+
+Ajax.prototype.getTransport = function()
+{
+	var ajax = null;
+
+	try { ajax = new XMLHttpRequest(); }
+	catch(e) { ajax = null; }
+
+	try { if(!ajax) ajax = new ActiveXObject("Msxml2.XMLHTTP"); }
+	catch(e) { ajax = null; }
+
+	try { if(!ajax) ajax = new ActiveXObject("Microsoft.XMLHTTP"); }
+	catch(e) { ajax = null; }
+
+	return ajax;
+}
+
+function ajaxTrampoline(ajaxObject)
+{
+	return function() { ajaxObject.stateDispatch(); };
+}
+Ô_$http://sf.munitime.com/js/cookies.jsOsbplist00Ô	
+X$versionT$topY$archiverX$objects † Ñ_WebResourceResponse€_NSKeyedArchiver¯&,-345MNOPQRSTUVWXYZ[\M]^bcU$nullİ
+ !"#$%V$classR$3R$8S$10S$11R$5R$6R$4R$7R$2R$9R$0R$1€€€ €€€€€ Ó
+'()$+WNS.base[NS.relative€€ €_$http://sf.munitime.com/js/cookies.jsÒ./01X$classesZ$classname¢12UNSURLXNSObject#A¯¡ÉÈÓ
+6789CWNS.keysZNS.objects€©:;<=>?@AB€	€
+€€€
+€€€€©DEFGHIJKL€€€€€€€€€ZKeep-Alive]Accept-RangesVServer\Content-TypeTDate^Content-LengthTEtagZConnection]Last-Modified_timeout=2, max=100Ubytes_vApache/2.2.11 (Unix) PHP/4.4.9 mod_ssl/2.2.11 OpenSSL/0.9.8c mod_fastcgi/2.4.6 Phusion_Passenger/2.1.2 DAV/2 SVN/1.4.2_application/javascript_Sun, 05 Apr 2009 20:49:10 GMTS898_"c1950bc-382-434805c5e8840"_Thu, 05 Jul 2007 08:56:57 GMTÒ./_`£`a2_NSMutableDictionary\NSDictionary‚Ò./de£ef2_NSHTTPURLResponse]NSURLResponse     ) 2 7 : P R d … ‹ ¦ ­ ° ³ · » ¾ Á Ä Ç Ê Í Ğ Ó Õ × Ù Û İ ß á ã å ç é ë ò ú
+38ALOU^gipxƒ…‘“•—™›Ÿ¡«­¯±³µ·¹»½ÈÖİêïş17°Ééí+04JWZ_cw             g              …O‚
+function setCookie(key, value, expire, domain, path)
+{
+	var cookie = key + "=" + encodeURIComponent(value);
+	
+	if( domain != null )
+		cookie += "; domain="+domain;
+	
+	if( path != null )
+		cookie += "; path="+path;
+	
+	if( expire != null )
+	{
+		var expiration = new Date();
+		expiration.setTime(expiration.getTime() + (expire * 24 * 60 * 60 * 1000));
+		cookie += "; expires=" + expiration.toGMTString();
+	}
+	
+	document.cookie = cookie;
+}
+
+function getCookie(key)
+{
+	if( document.cookie.length > 0 )
+  {
+	  keyStart = document.cookie.indexOf(key + "=");
+  	if( keyStart != -1 )
+    { 
+			keyStart = keyStart + key.length + 1;
+			keyEnd = document.cookie.indexOf(";", keyStart);
+			if( keyEnd == -1 )
+				keyEnd = document.cookie.length;
+			
+			return decodeURIComponent(document.cookie.substring(keyStart, keyEnd));
+    } 
+  }
+  
+	return "";
+}
+
+function deleteCookie(key)
+{
+	setCookie(key, "", -1);
+}Ô _%http://sf.munitime.com/css/viewer.cssOfbplist00Ô	
+X$versionT$topY$archiverX$objects † Ñ_WebResourceResponse€_NSKeyedArchiver¯&,-345MNOPQRSTUVWXYZ[\M]^bcU$nullİ
+ !"#$%V$classR$3R$8S$10S$11R$5R$6R$4R$7R$2R$9R$0R$1€€€ €€€€€ Ó
+'()$+WNS.base[NS.relative€€ €_%http://sf.munitime.com/css/viewer.cssÒ./01X$classesZ$classname¢12UNSURLXNSObject#A¯¡Ïï¿ÈÓ
+6789CWNS.keysZNS.objects€©:;<=>?@AB€	€
+€€€
+€€€€©DEFGHIJKL€€€€€€€€€ZKeep-Alive]Accept-RangesVServer\Content-TypeTDate^Content-LengthTEtagZConnection]Last-Modified_timeout=2, max=100Ubytes_vApache/2.2.11 (Unix) PHP/4.4.9 mod_ssl/2.2.11 OpenSSL/0.9.8c mod_fastcgi/2.4.6 Phusion_Passenger/2.1.2 DAV/2 SVN/1.4.2Xtext/css_Sun, 05 Apr 2009 20:49:10 GMTT4705_"c195090-1261-435194f50ea00"_Thu, 12 Jul 2007 23:25:28 GMTÒ./_`£`a2_NSMutableDictionary\NSDictionaryaÒ./de£ef2_NSHTTPURLResponse]NSURLResponse     ) 2 7 : P R d … ‹ ¦ ­ ° ³ · » ¾ Á Ä Ç Ê Í Ğ Ó Õ × Ù Û İ ß á ã å ç é ë ò ú
+49BMPV_hjqy„†’”–˜šœ ¢¬®°²´¶¸º¼¾É×Şëğÿ28±ºÚßş#'=JMRVj             g              xXtext/cssOabody
+{
+	margin: 0;
+	padding: 0;
+	font-family: Helvetica, sans-serif;
+	font-size: 16pt;
+	min-height: 416px;
+	background-color: #aaa;
+	background-image: url(/img/bg.png);
+	background-image: url(/img/bgbot2.png), url(/img/bgbot.png), url(/img/bg.png);
+	background-repeat: repeat-x, repeat-x, repeat;
+	background-position: left bottom, left bottom, left top;
+}
+
+#page
+{
+	margin: 0 auto 0 auto;
+	width: 320px;
+}
+
+#maplinkContainer
+{
+	font-size: 9pt;
+	text-align: right;
+	padding: 4px 11px 6px 0;
+	margin: 0;
+}
+
+#maplink
+{
+	color: #333;
+	text-decoration: none;
+	text-shadow: white 0 1px 0;
+}
+
+#optionsContainer
+{
+	background-color: #e3e3e3;
+	padding: 9px 9px 0 9px;
+	border-color: white;
+	border-style: solid;
+	border-width: 1px 0 0 0;
+}
+
+#options
+{
+	display: block;
+	background-color: white;
+	padding: 0;
+	margin: 0;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #9f9f9f;
+	-khtml-border-radius: 10px;
+	-moz-border-radius: 10px;
+}
+
+#options li:first-child
+{
+	border-style: none;
+	padding-top: 10px;
+}
+
+#options li
+{
+	display: block;
+	font-weight: bold;
+	font-size: 12pt;
+	margin: 0;
+	padding: 8px 30px 8px 11px;
+	cursor: pointer;
+	border-width: 1px 0 0 0;
+	border-style: solid;
+	border-color: #a5a5a5;
+	background-image: url(/img/arrow.gif);
+	background-repeat: no-repeat;
+	background-position: right center;
+}
+
+#options li small
+{
+	display: block;
+	font-size: 10pt;
+	font-weight: normal;
+	color: #888;
+}
+
+#header
+{
+	margin: 0;
+	padding: 0;
+	font-size: 16pt;
+	color: white;
+	height: 38px;
+	background-image: url(/img/bar.png);
+	background-repeat: repeat-x;
+	text-shadow: #760000 0 -1px;
+	text-align: center;
+	font-weight: bold;
+}
+
+#header span
+{
+	display: block;
+	padding: 7px 0 0 0;
+}
+
+#chooser
+{
+	width: 320px;
+	margin: 0 0 0 -160px;
+	padding: 0;
+	min-height: 318px;
+	position: absolute;
+	top: 38px;
+	left: 50%;
+	z-index: 10;
+}
+
+#chooser ul
+{
+	display: block;
+	margin: 9px;
+	padding: 0;
+	border-width: 1px;
+	border-style: solid;
+	border-color: #66768c;
+	-khtml-border-radius: 10px;
+	-moz-border-radius: 10px;
+	background-color: white;
+}
+
+#chooser ul li
+{
+	font-size: 12pt;
+	font-weight: bold;
+	display: block;
+	margin: 0;
+	cursor: pointer;
+	padding: 10px 30px 9px 10px;
+	border-color: #a5a5a5;
+	border-width: 0 0 1px 0;
+	border-style: solid;
+	background-image: url(/img/arrow.gif);
+	background-repeat: no-repeat;
+	background-position: right center;
+}
+
+#chooser ul li.directions
+{
+}
+
+#chooser ul li.stops
+{
+}
+
+#chooser ul li.chosen
+{
+	
+}
+
+#chooser ul li:first-child
+{
+	padding-top: 11px;
+}
+
+#chooser ul li:last-child
+{
+	border-style: none;
+}
+
+#progress
+{
+	text-align: center;
+	font-size: 12pt;
+	margin: -50px 0 0 -125px;
+	left: 50%;
+	top: 50%;
+	color: white;
+	width: 250px;
+	padding: 0;
+	background-color: black;
+	-khtml-border-radius: 10px;
+	-moz-border-radius: 10px;
+	position: fixed;
+	z-index: 21;
+	opacity: 0.8;
+	border-color: #676767;
+	border-width: 1px;
+	border-style: solid;
+}
+
+#progress span
+{
+	display: block;
+	padding: 53px 15px 10px 15px;
+	background-image: url(/img/prog.gif);
+	background-repeat: no-repeat;
+	background-position: center 12px;
+}
+
+#progressBack
+{
+	min-height: 416px;
+	background-color: black;
+	position: absolute;
+	top: 0;
+	left: 0;
+	bottom: 0;
+	right: 0;
+	z-index: 20;
+	opacity: 0.7;
+}
+
+#nexttime
+{
+	color: black;
+	height: 63px;
+	background-color: #e3e3e3;
+	background-image: url(/img/setbgbot.png);
+	background-repeat: repeat-x;
+	background-position: left bottom;
+	border-color: #bbb #bbb #aaa #bbb;
+	border-style: dotted solid solid solid;
+	border-width: 1px 0 1px 0;
+}
+
+#nexttime>span
+{
+	display: block;
+	text-align: center;
+	text-shadow: white 0 1px 1px;
+	padding: 0;
+}
+
+#nexttime small
+{
+	padding-right: 5px;
+	font-size: 12pt;
+	font-weight: normal;
+	display: inline-block;
+	vertical-align: middle;
+	clear: none;
+}
+
+#nexttime strong
+{
+	font-size: 42pt;
+	font-weight: bold;
+	font-style: normal;
+	display: inline-block;
+	vertical-align: middle;
+	padding: 0 4pt 0 0;
+	margin: 0;
+	letter-spacing: -4pt;
+}
+
+#nexttime b
+{
+	margin-left: 5px;
+	font-size: 12pt;
+	display: inline-block;
+	vertical-align: middle;
+}
+
+#nexttime em, #nexttime i
+{
+	font-size: 25pt;
+	font-weight: bold;
+	font-style: normal;
+	display: inline-block;
+	vertical-align: middle;
+	padding: 0;
+	margin: 12px 0 0 0;
+}
+
+#nexttime em
+{
+	color: #a20028;
+}
+
+#nexttime i
+{
+	color: #555555;
+}
+
+#latertimes
+{
+	background-image: url(/img/timeshade.png);
+	background-repeat: repeat-x;
+	padding: 8px 0 5px 0;
+	font-size: 10pt;
+	color: white;
+	text-align: center;
+	font-weight: bold;
+	text-shadow: #2c4260 0 1px 2px;
+}
+
+#ad
+{
+	position: absolute;
+	bottom: 0;
+	font-size: 8pt;
+	color: #d8d8d8;
+	text-align: center;
+	text-shadow: #2c4260 0 1px 1px;
+	padding-bottom: 7px;
+	left: 0;
+	right: 0;
+}
+
+#ad a
+{
+	color: #ccdffc;
+}  
+  1 : I ` v ˆ ¢ £ ­-¯-´-½-Ó-ù2`2j????C³CÌPZPcPŠUX‡XX¸]"]+             !              o
